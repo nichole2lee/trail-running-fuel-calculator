@@ -16,8 +16,8 @@ export async function POST() {
     }
 
     // 按名称分组，找出重复项
-    const nameMap = new Map();
-    const duplicates = [];
+    const nameMap = new Map<string, any>();
+    const duplicates: any[] = [];
 
     allSupplements.forEach((supplement) => {
       const name = supplement.name;
