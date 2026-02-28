@@ -80,6 +80,8 @@ const SUPPLEMENT_TYPES = [
   '运动饮料',
   '电解质胶囊',
   '能量粉',
+  '蛋白粉',
+  '电解质粉',
   '饮料',
   '其他'
 ];
@@ -337,6 +339,8 @@ export default function CalculatorPage() {
       '运动饮料': 'bg-cyan-50 text-cyan-700',
       '电解质胶囊': 'bg-pink-50 text-pink-700',
       '能量粉': 'bg-yellow-50 text-yellow-700',
+      '蛋白粉': 'bg-indigo-50 text-indigo-700',
+      '电解质粉': 'bg-teal-50 text-teal-700',
       '饮料': 'bg-red-50 text-red-700',
       '其他': 'bg-gray-50 text-gray-700'
     };
