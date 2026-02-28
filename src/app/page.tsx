@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Trash2, Calculator as CalculatorIcon, Package, Mountain, Zap, Droplets, Target, Activity, Flame, Scale } from 'lucide-react';
+import { Plus, Minus, Trash2, Calculator as CalculatorIcon, Package, Mountain, Zap, Droplets, Target, Activity, Flame, Scale, Search } from 'lucide-react';
 
 interface Supplement {
   id: number;
@@ -52,6 +52,48 @@ interface RaceRecommendations {
   waterIntake: number;
 }
 
+// 品牌分组映射
+const BRAND_GROUPS: Record<string, string> = {
+  'Maurten': 'Maurten',
+  'SiS': 'SiS',
+  'GU': 'GU',
+  'Overstims': 'Overstims',
+  'Amino Vital': 'Amino Vital',
+  'Mag-on': 'Mag-on',
+  '康比特': '康比特',
+  '迈胜': '迈胜',
+  'Precision': 'Precision',
+  'Huma': 'Huma',
+  'Spring': 'Spring',
+  'High5': 'High5',
+  'Hammer': 'Hammer',
+  'Neversecond': 'Neversecond',
+  'Honey Stinger': 'Honey Stinger',
+  'PowerBar': 'PowerBar',
+  'Clif Bar': 'Clif Bar',
+  'Enervit': 'Enervit',
+  'Torq': 'Torq',
+  'UCAN': 'UCAN',
+  'Naak': 'Naak',
+  'Veloforte': 'Veloforte',
+  '226ERS': '226ERS',
+  'Decathlon': 'Decathlon',
+  '肌能': '肌能',
+  '必乐': '必乐',
+  '耐力兔': '耐力兔',
+  '迈克仕': '迈克仕',
+  '一汽': '一汽',
+  'Meiji': 'Meiji',
+  'Medalist': 'Medalist',
+  'Morinaga': 'Morinaga',
+  'Mountain Fuel': 'Mountain Fuel',
+  'OTE': 'OTE',
+  'CrankSports': 'CrankSports',
+  '京东京造': '京东京造',
+  'KODA': 'KODA',
+  '可乐': '其他'
+};
+
 const SUPPLEMENT_TYPES = [
   '能量胶',
   '盐丸',
@@ -68,6 +110,7 @@ export default function CalculatorPage() {
   const [selectedSupplements, setSelectedSupplements] = useState<SelectedSupplement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [raceParams, setRaceParams] = useState<RaceParams>({
     distance: 50,
@@ -172,6 +215,42 @@ export default function CalculatorPage() {
     setSelectedSupplements(selectedSupplements.filter(s => s.id !== id));
   };
 
+  // 按品牌分组能量胶
+  const groupSupplementsByBrand = (supplements: Supplement[]) => {
+    const groups: Record<string, Supplement[]> = {};
+    
+    supplements.forEach(supplement => {
+      let brand = '其他';
+      
+      // 尝试匹配品牌
+      for (const [brandName, brandKey] of Object.entries(BRAND_GROUPS)) {
+        if (supplement.name.includes(brandName)) {
+          brand = brandKey;
+          break;
+        }
+      }
+      
+      if (!groups[brand]) {
+        groups[brand] = [];
+      }
+      groups[brand].push(supplement);
+    });
+    
+    return groups;
+  };
+
+  // 过滤和搜索补给品
+  const filteredSupplements = supplements.filter(supplement => {
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      return supplement.name.toLowerCase().includes(searchLower) ||
+             supplement.type.toLowerCase().includes(searchLower);
+    }
+    return true;
+  });
+
+  const groupedSupplements = groupSupplementsByBrand(filteredSupplements);
+
   const calculateTotals = () => {
     return selectedSupplements.reduce(
       (acc, item) => ({
@@ -199,27 +278,15 @@ export default function CalculatorPage() {
 
   const totals = calculateTotals();
 
-  // 计算总重量（从notes中提取）
+  // 计算总重量（从notes中提取，单位改为克）
   const calculateTotalWeight = () => {
     return selectedSupplements.reduce((acc, item) => {
       let weight = 0;
       const notes = item.notes || '';
-      // 尝试从备注中提取重量（如"60ml", "100ml"等）
-      const weightMatch = notes.match(/(\d+)ml/);
+      // 从备注中提取重量（如"60ml", "100ml"等），直接换算为克
+      const weightMatch = notes.match(/(\d+)克|(\d+)ml/);
       if (weightMatch) {
-        weight = parseInt(weightMatch[1], 10);
-      } else if (notes.includes('60ml')) {
-        weight = 60;
-      } else if (notes.includes('90ml')) {
-        weight = 90;
-      } else if (notes.includes('100ml')) {
-        weight = 100;
-      } else if (notes.includes('120ml')) {
-        weight = 120;
-      } else if (notes.includes('180ml')) {
-        weight = 180;
-      } else if (notes.includes('200ml')) {
-        weight = 200;
+        weight = parseInt(weightMatch[1] || weightMatch[2], 10);
       }
       return acc + weight * item.quantity;
     }, 0);
@@ -299,7 +366,7 @@ export default function CalculatorPage() {
             越野赛能量补给计算器
           </h1>
           <p className="text-gray-500 text-sm">
-            基于科学研究的专业补给规划工具
+            基于科学研究的专业补给规划工具 · {supplements.length}种补给品
           </p>
         </div>
       </div>
@@ -329,7 +396,7 @@ export default function CalculatorPage() {
                         <Package className="w-5 h-5 text-gray-500" />
                         补给品库
                       </CardTitle>
-                      <CardDescription className="text-gray-500">选择补给品添加到计算器</CardDescription>
+                      <CardDescription className="text-gray-500">按品牌分组，支持搜索</CardDescription>
                     </div>
                     <Button onClick={() => setShowAddForm(!showAddForm)} variant="outline" size="sm">
                       <Plus className="w-4 h-4 mr-1" />
@@ -338,6 +405,17 @@ export default function CalculatorPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {/* 搜索框 */}
+                  <div className="mb-4 relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <Input
+                      placeholder="搜索补给品..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 bg-white border-gray-300"
+                    />
+                  </div>
+
                   {showAddForm && (
                     <Card className="mb-4 bg-blue-50 border-blue-200">
                       <CardHeader className="pb-3">
@@ -462,7 +540,7 @@ export default function CalculatorPage() {
                             id="notes"
                             value={newSupplement.notes}
                             onChange={(e) => setNewSupplement({ ...newSupplement, notes: e.target.value })}
-                            placeholder="例如：建议每30-45分钟服用"
+                            placeholder="例如：60克，建议每30-45分钟服用"
                             className="bg-white border-gray-300"
                           />
                         </div>
@@ -479,39 +557,60 @@ export default function CalculatorPage() {
                     </Card>
                   )}
 
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                    {supplements.length === 0 ? (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                    {Object.keys(groupedSupplements).length === 0 ? (
                       <div className="text-center py-12 text-gray-400">
-                        暂无补给品，点击上方按钮添加
+                        未找到匹配的补给品
                       </div>
                     ) : (
-                      supplements.map((supplement) => (
-                        <Card key={supplement.id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge className={getTypeColor(supplement.type)}>
-                                    {supplement.type}
-                                  </Badge>
-                                </div>
-                                <h3 className="font-medium text-gray-900 text-sm mb-1 truncate">{supplement.name}</h3>
-                                <div className="grid grid-cols-3 gap-1 text-xs text-gray-500">
-                                  <div><span className="text-blue-600 font-medium">{supplement.calories}</span> 卡</div>
-                                  <div><span className="text-green-600 font-medium">{Number(supplement.carbohydrates).toFixed(0)}</span>g 碳水</div>
-                                  <div><span className="text-orange-600 font-medium">{supplement.sodium}</span>mg 钠</div>
-                                </div>
-                              </div>
-                              <Button
-                                onClick={() => addToCalculator(supplement)}
-                                size="sm"
-                                className="shrink-0 bg-blue-600 hover:bg-blue-700"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
+                      Object.entries(groupedSupplements).map(([brand, brandSupplements]) => (
+                        <div key={brand}>
+                          <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                            <Package className="w-4 h-4 text-gray-400" />
+                            {brand}
+                            <Badge variant="outline" className="text-xs">
+                              {brandSupplements.length}
+                            </Badge>
+                          </h3>
+                          <div className="space-y-2 mb-4">
+                            {brandSupplements.map((supplement) => (
+                              <Card key={supplement.id} className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Badge className={getTypeColor(supplement.type)}>
+                                          {supplement.type}
+                                        </Badge>
+                                      </div>
+                                      <h3 className="font-medium text-gray-900 text-sm mb-1 truncate">{supplement.name}</h3>
+                                      <div className="grid grid-cols-4 gap-1 text-xs text-gray-500">
+                                        <div><span className="text-blue-600 font-medium">{supplement.calories}</span>卡</div>
+                                        <div><span className="text-green-600 font-medium">{Number(supplement.carbohydrates).toFixed(0)}</span>g</div>
+                                        <div><span className="text-orange-600 font-medium">{supplement.sodium}</span>mg</div>
+                                        {supplement.notes && (
+                                          <div className="text-gray-400">
+                                            {supplement.notes.replace(/(\d+)克|(\d+)ml/, (match, g1, g2) => {
+                                              const weight = g1 || g2;
+                                              return `${weight}克`;
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      onClick={() => addToCalculator(supplement)}
+                                      size="sm"
+                                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
                       ))
                     )}
                   </div>
@@ -616,7 +715,7 @@ export default function CalculatorPage() {
                             <p className="text-gray-600 text-xs">总重量</p>
                           </div>
                           <p className="text-2xl font-semibold text-gray-900">{totalWeight}</p>
-                          <p className="text-gray-500 text-xs mt-1">毫升</p>
+                          <p className="text-gray-500 text-xs mt-1">克</p>
                         </div>
                       )}
 
