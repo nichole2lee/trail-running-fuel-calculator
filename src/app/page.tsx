@@ -63,34 +63,12 @@ const BRAND_GROUPS: Record<string, string> = {
   '康比特': '康比特',
   '迈胜': '迈胜',
   'Precision': 'Precision',
-  'Huma': 'Huma',
-  'Spring': 'Spring',
-  'High5': 'High5',
-  'Hammer': 'Hammer',
-  'Neversecond': 'Neversecond',
-  'Honey Stinger': 'Honey Stinger',
-  'PowerBar': 'PowerBar',
-  'Clif Bar': 'Clif Bar',
-  'Enervit': 'Enervit',
-  'Torq': 'Torq',
-  'UCAN': 'UCAN',
   'Naak': 'Naak',
-  'Veloforte': 'Veloforte',
-  '226ERS': '226ERS',
-  'Decathlon': 'Decathlon',
-  '肌能': '肌能',
-  '必乐': '必乐',
-  '耐力兔': '耐力兔',
-  '迈克仕': '迈克仕',
-  '一汽': '一汽',
-  'Meiji': 'Meiji',
-  'Medalist': 'Medalist',
-  'Morinaga': 'Morinaga',
-  'Mountain Fuel': 'Mountain Fuel',
-  'OTE': 'OTE',
-  'CrankSports': 'CrankSports',
-  '京东京造': '京东京造',
-  'KODA': 'KODA',
+  '迪卡侬': '迪卡侬',
+  '植电': '植电',
+  '肌鲣强': '肌鲣强',
+  'Win Sports': 'Win Sports',
+  '宝矿力': '宝矿力',
   '可乐': '其他'
 };
 
@@ -101,7 +79,8 @@ const SUPPLEMENT_TYPES = [
   '固体食物',
   '运动饮料',
   '电解质胶囊',
-  '能量饼干',
+  '能量粉',
+  '饮料',
   '其他'
 ];
 
@@ -297,30 +276,48 @@ export default function CalculatorPage() {
   const calculateRaceRecommendations = (): RaceRecommendations => {
     const { distance, elevation, temperature, weight, estimatedTime, avgHeartRate } = raceParams;
 
+    // 基于身体基础代谢
     const baseMetabolicRate = weight * 1.2;
-    const elevationFactor = elevation * 0.001;
-    const intensityFactor = avgHeartRate / 140;
+
+    // 爬升因子（每1000米爬升增加10%消耗）
+    const elevationFactor = 1 + (elevation / 10000);
+
+    // 强度因子：基于距离和时间的相对强度
+    const averageSpeed = distance / estimatedTime; // km/h
+    const intensityFactor = Math.min(averageSpeed / 6, 1.5); // 以6km/h为基准，最大1.5倍
+
+    // 温度因子（高温增加消耗和水分需求）
     const tempFactor = temperature > 25 ? 1.15 : (temperature < 10 ? 1.05 : 1.0);
 
-    const hourlyCalories = Math.round(baseMetabolicRate * intensityFactor * elevationFactor * tempFactor * 4);
-    const hourlyCarbs = Math.round(hourlyCalories * 0.6 / 4);
+    // 计算每小时能量消耗
+    const hourlyCalories = Math.round(baseMetabolicRate * intensityFactor * elevationFactor * tempFactor * 3.5);
 
-    const sweatRate = 0.8 * intensityFactor * tempFactor;
-    const hourlySodium = Math.round(sweatRate * 800);
+    // 计算每小时碳水需求（普通跑者30-60g，精英可达90g）
+    const hourlyCarbs = Math.round(hourlyCalories * 0.55 / 4);
+
+    // 出汗率（基于强度和温度）
+    const sweatRate = 0.7 * intensityFactor * tempFactor;
+
+    // 每小时钠需求（基于出汗率）
+    const hourlySodium = Math.round(sweatRate * 750);
+
+    // 每小时钾需求
     const hourlyPotassium = Math.round(sweatRate * 200);
 
+    // 补水量
     const waterIntake = sweatRate;
 
+    // 总需求
     const totalCalories = Math.round(hourlyCalories * estimatedTime);
     const totalCarbs = Math.round(hourlyCarbs * estimatedTime);
     const totalSodium = Math.round(hourlySodium * estimatedTime);
     const totalPotassium = Math.round(hourlyPotassium * estimatedTime);
 
     return {
-      hourlyCalories: Math.min(Math.max(hourlyCalories, 200), 400),
-      hourlyCarbs: Math.min(Math.max(hourlyCarbs, 30), 90),
-      hourlySodium: Math.min(Math.max(hourlySodium, 300), 1200),
-      hourlyPotassium: Math.min(Math.max(hourlyPotassium, 100), 400),
+      hourlyCalories: Math.min(Math.max(hourlyCalories, 200), 400), // 普通跑者200-400卡/小时
+      hourlyCarbs: Math.min(Math.max(hourlyCarbs, 30), 60), // 普通跑者30-60g/小时，而非90g
+      hourlySodium: Math.min(Math.max(hourlySodium, 300), 1000), // 300-1000mg/小时
+      hourlyPotassium: Math.min(Math.max(hourlyPotassium, 100), 400), // 100-400mg/小时
       totalCalories,
       totalCarbs,
       totalSodium,
@@ -339,7 +336,8 @@ export default function CalculatorPage() {
       '固体食物': 'bg-purple-50 text-purple-700',
       '运动饮料': 'bg-cyan-50 text-cyan-700',
       '电解质胶囊': 'bg-pink-50 text-pink-700',
-      '能量饼干': 'bg-yellow-50 text-yellow-700',
+      '能量粉': 'bg-yellow-50 text-yellow-700',
+      '饮料': 'bg-red-50 text-red-700',
       '其他': 'bg-gray-50 text-gray-700'
     };
     return colors[type] || colors['其他'];
@@ -1032,6 +1030,7 @@ export default function CalculatorPage() {
                   <li>• <strong>补水策略：</strong>每小时补充 {recommendations.waterIntake} 升水，分多次小口饮用</li>
                   <li>• <strong>时间安排：</strong>建议每 30-45 分钟补给一次，提前规划补给站或自备补给</li>
                   <li>• <strong>温度提醒：</strong>当前温度 {raceParams.temperature}°C，高温时需增加补水量和电解质摄入</li>
+                  <li>• <strong>碳水摄入说明：</strong>本计算器推荐每小时30-60g碳水（普通跑者范围）。每小时90g碳水仅适合经过专业训练的精英运动员，普通跑者尝试可能导致肠胃不适。</li>
                   <li>• <strong>训练建议：</strong>所有补给方案应在训练中测试，确保肠胃适应</li>
                 </ul>
               </CardContent>
